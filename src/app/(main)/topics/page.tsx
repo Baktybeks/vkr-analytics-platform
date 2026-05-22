@@ -6,13 +6,19 @@ import { useAuthStore } from "@/store/authStore";
 import { useCurrentUser } from "@/services/authService";
 import { useDepartments } from "@/services/departmentsService";
 import { appwriteApiFetch } from "@/lib/appwriteApiFetch";
+import { downloadTopicsXlsx } from "@/lib/exportTopicsXlsx";
 import { normalizeTopicTitle } from "@/lib/normalizeTopicTitle";
 import { TopicHistoryPanel } from "@/components/topics/TopicHistoryPanel";
+import { TopicSimilarityAlert } from "@/components/topics/TopicSimilarityAlert";
 import {
-  SimilarityMatchCard,
   TopicSimilarityBadge,
   TopicSimilarityPanel,
 } from "@/components/topics/TopicSimilarityPanel";
+import {
+  buildSimilaritySummary,
+  enrichMatchesFromTopics,
+  parseStoredSimilarityMatches,
+} from "@/lib/topicSimilarityStorage";
 import {
   TopicsFilters,
   createEmptyFilters,
@@ -83,6 +89,7 @@ export default function TopicsPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMatches, setAiMatches] = useState<TopicSimilarityMatch[]>([]);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const [listFilters, setListFilters] = useState<TopicsFilterState>(
     createEmptyFilters
@@ -181,7 +188,12 @@ export default function TopicsPage() {
     setYear(t.year || "");
     setNotes(t.notes || "");
     setAdminDeptCreate(user?.role === "ADMIN" ? t.departmentId : "");
-    resetAi();
+    const stored = enrichMatchesFromTopics(
+      parseStoredSimilarityMatches(t.similarityMatchesJson),
+      topics
+    );
+    setAiMatches(stored);
+    setAiSummary(buildSimilaritySummary(stored));
     setModalOpen(true);
   };
 
@@ -304,6 +316,27 @@ export default function TopicsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const handleExportXlsx = async () => {
+    if (filteredTopics.length === 0) {
+      toast.info("Нет тем для экспорта по текущим фильтрам");
+      return;
+    }
+    setExporting(true);
+    try {
+      const stamp = new Date().toISOString().slice(0, 10);
+      await downloadTopicsXlsx(
+        filteredTopics,
+        departments,
+        `vkr-topics-${stamp}.xlsx`
+      );
+      toast.success(`Экспортировано тем: ${filteredTopics.length}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Ошибка экспорта");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await appwriteApiFetch(`/api/topics/${id}`, {
@@ -340,13 +373,23 @@ export default function TopicsPage() {
               : "Администратор: при необходимости отфильтруйте список по кафедре."}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="shrink-0 rounded-full bg-[#0d6efd] px-6 py-2.5 text-base font-semibold text-white shadow-lg shadow-blue-600/30 transition hover:bg-[#0b5ed7]"
-        >
-          + Добавить тему
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={exporting || isLoading || filteredTopics.length === 0}
+            onClick={handleExportXlsx}
+            className="shrink-0 rounded-full border-2 border-white/70 bg-white/10 px-5 py-2.5 text-base font-semibold text-white transition hover:bg-white/20 disabled:opacity-50"
+          >
+            {exporting ? "Экспорт…" : "Экспорт в Excel"}
+          </button>
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="shrink-0 rounded-full bg-[#0d6efd] px-6 py-2.5 text-base font-semibold text-white shadow-lg shadow-blue-600/30 transition hover:bg-[#0b5ed7]"
+          >
+            + Добавить тему
+          </button>
+        </div>
       </div>
 
       {user.role === "ADMIN" && (
@@ -569,6 +612,16 @@ export default function TopicsPage() {
               <p className="mt-4 text-base text-amber-700">{duplicateHint}</p>
             )}
 
+            {isEdit && (aiSummary || aiMatches.length > 0) && (
+              <div className="mt-4">
+                <TopicSimilarityAlert
+                  title="Дубликаты и похожие формулировки"
+                  summary={aiSummary}
+                  matches={aiMatches}
+                />
+              </div>
+            )}
+
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className="text-base font-medium text-slate-700">
@@ -594,18 +647,12 @@ export default function TopicsPage() {
                 </button>
               </div>
 
-              {aiSummary && (
-                <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-base font-medium text-slate-800">
-                    {aiSummary}
-                  </p>
-                  {aiMatches.length > 0 && (
-                    <ul className="mt-3 space-y-2">
-                      {aiMatches.map((m) => (
-                        <SimilarityMatchCard key={m.topicId} match={m} />
-                      ))}
-                    </ul>
-                  )}
+              {!isEdit && aiSummary && (
+                <div className="sm:col-span-2">
+                  <TopicSimilarityAlert
+                    summary={aiSummary}
+                    matches={aiMatches}
+                  />
                 </div>
               )}
 

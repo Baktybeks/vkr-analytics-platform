@@ -38,6 +38,16 @@ export function parseStoredSimilarityMatches(
   }
 }
 
+export function buildSimilaritySummary(
+  matches: TopicSimilarityMatch[]
+): string | null {
+  if (matches.length === 0) return null;
+  if (matches.some((m) => m.similarityPercent >= 80)) {
+    return `Внимание: найдено ${matches.length} похожих тем(ы), возможен дубликат (схожесть ≥ 80%).`;
+  }
+  return `Найдено ${matches.length} тем(ы) с заметной схожестью формулировки.`;
+}
+
 export function serializeSimilarityForTopic(matches: TopicSimilarityMatch[]): {
   similarityMaxPercent?: number;
   similarityMatchesJson?: string;
