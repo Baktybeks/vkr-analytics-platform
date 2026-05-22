@@ -13,6 +13,8 @@ const appwriteConfig = {
     profiles: process.env.NEXT_PUBLIC_PROFILES_COLLECTION_ID || "profiles",
     vkr_topics:
       process.env.NEXT_PUBLIC_VKR_TOPICS_COLLECTION_ID || "vkr_topics",
+    topic_audit_log:
+      process.env.NEXT_PUBLIC_TOPIC_AUDIT_COLLECTION_ID || "topic_audit_log",
   },
 };
 
@@ -43,9 +45,27 @@ const COLLECTION_SCHEMAS = {
     studentName: { type: "string", required: false, size: 255 },
     supervisorName: { type: "string", required: false, size: 255 },
     year: { type: "string", required: false, size: 16 },
+    studentGroup: { type: "string", required: false, size: 64 },
     notes: { type: "string", required: false, size: 2000 },
+    updatedByUserId: { type: "string", required: false, size: 36 },
+    similarityMaxPercent: { type: "integer", required: false },
+    similarityMatchesJson: { type: "string", required: false, size: 8000 },
     createdAt: { type: "datetime", required: true },
     updatedAt: { type: "datetime", required: true },
+  },
+
+  topic_audit_log: {
+    topicId: { type: "string", required: true, size: 36 },
+    departmentId: { type: "string", required: true, size: 36 },
+    action: {
+      type: "enum",
+      required: true,
+      elements: ["create", "update", "delete"],
+    },
+    userId: { type: "string", required: true, size: 36 },
+    userName: { type: "string", required: true, size: 255 },
+    changes: { type: "string", required: false, size: 8000 },
+    createdAt: { type: "datetime", required: true },
   },
 };
 
@@ -64,6 +84,11 @@ const COLLECTION_INDEXES = {
       type: "unique",
       attributes: ["departmentId", "normalizedTitle"],
     },
+  ],
+  topic_audit_log: [
+    { key: "topicId", type: "key" },
+    { key: "departmentId", type: "key" },
+    { key: "createdAt", type: "key" },
   ],
 };
 
@@ -117,6 +142,18 @@ const createAttribute = async (databaseId, collectionId, key, schema) => {
           collectionId,
           key,
           required: isRequired,
+          default: defaultValue ?? undefined,
+          array: schema.array || false,
+        });
+
+      case "integer":
+        return await databases.createIntegerAttribute({
+          databaseId,
+          collectionId,
+          key,
+          required: isRequired,
+          min: schema.min,
+          max: schema.max,
           default: defaultValue ?? undefined,
           array: schema.array || false,
         });

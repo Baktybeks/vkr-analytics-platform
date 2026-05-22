@@ -3,7 +3,9 @@ import { Databases, Query } from "node-appwrite";
 import { appwriteConfig, getCollectionId } from "@/constants/appwriteConfig";
 import { createAdminClient, getSessionProfile } from "@/lib/serverAppwrite";
 import { normalizeTopicTitle } from "@/lib/normalizeTopicTitle";
-import type { VkrTopicDoc } from "@/types";
+import { buildTopicDiff, writeTopicAudit } from "@/lib/topicAudit";
+import { computeSimilarityForSave } from "@/lib/runTopicSimilarityForSave";
+import type { TopicSimilarityMatch, VkrTopicDoc } from "@/types";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -57,10 +59,12 @@ export async function PATCH(request: Request, context: RouteContext) {
     const body = (await request.json()) as {
       title?: string;
       studentName?: string;
+      studentGroup?: string;
       supervisorName?: string;
       year?: string;
       notes?: string;
       departmentId?: string;
+      similarityMatches?: TopicSimilarityMatch[];
     };
 
     let title = topic.title;
@@ -124,6 +128,10 @@ export async function PATCH(request: Request, context: RouteContext) {
       body.studentName !== undefined
         ? body.studentName.trim()
         : topic.studentName;
+    const studentGroup =
+      body.studentGroup !== undefined
+        ? body.studentGroup.trim()
+        : topic.studentGroup;
     const supervisorName =
       body.supervisorName !== undefined
         ? body.supervisorName.trim()
@@ -133,21 +141,62 @@ export async function PATCH(request: Request, context: RouteContext) {
     const notes =
       body.notes !== undefined ? body.notes.trim() : topic.notes;
 
+    const titleChanged =
+      normalizedTitle !== topic.normalizedTitle ||
+      departmentId !== topic.departmentId;
+    const shouldRefreshSimilarity =
+      titleChanged || (body.similarityMatches?.length ?? 0) > 0;
+
+    let similarityFields: {
+      similarityMaxPercent?: number;
+      similarityMatchesJson?: string;
+    } = {};
+    if (shouldRefreshSimilarity) {
+      const similarity = await computeSimilarityForSave({
+        title,
+        departmentId,
+        excludeTopicId: id,
+        clientMatches: body.similarityMatches,
+      });
+      similarityFields = {
+        similarityMaxPercent: similarity.similarityMaxPercent,
+        similarityMatchesJson: similarity.similarityMatchesJson,
+      };
+    }
+
+    const patchPayload = {
+      title,
+      normalizedTitle,
+      departmentId,
+      studentName,
+      studentGroup,
+      supervisorName,
+      year,
+      notes,
+      updatedByUserId: session.userId,
+      updatedAt: new Date().toISOString(),
+      ...similarityFields,
+    };
+
+    const diff = buildTopicDiff(topic, patchPayload);
+
     const updated = await databases.updateDocument(
       dbId,
       getCollectionId("vkr_topics"),
       id,
-      {
-        title,
-        normalizedTitle,
-        departmentId,
-        studentName,
-        supervisorName,
-        year,
-        notes,
-        updatedAt: new Date().toISOString(),
-      }
+      patchPayload
     );
+
+    if (diff.length > 0) {
+      await writeTopicAudit({
+        topicId: id,
+        departmentId,
+        action: "update",
+        userId: session.userId,
+        userName: session.profile.fullName,
+        changes: diff,
+      });
+    }
 
     return NextResponse.json(updated);
   } catch (e) {
@@ -180,6 +229,15 @@ export async function DELETE(_request: Request, context: RouteContext) {
     if (!canAccessTopic(session.profile, topic)) {
       return NextResponse.json({ error: "Нет доступа" }, { status: 403 });
     }
+
+    await writeTopicAudit({
+      topicId: id,
+      departmentId: topic.departmentId,
+      action: "delete",
+      userId: session.userId,
+      userName: session.profile.fullName,
+      changes: { snapshot: { title: topic.title } },
+    });
 
     await databases.deleteDocument(
       dbId,

@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { appwriteApiFetch } from "@/lib/appwriteApiFetch";
 import { useQuery } from "@tanstack/react-query";
 import { useDepartments } from "@/services/departmentsService";
 import type { VkrTopicDoc } from "@/types";
 import type { ProfileDoc } from "@/types";
+import { toast } from "react-toastify";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await appwriteApiFetch(url, {
@@ -17,7 +18,36 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 export default function StatsPage() {
+  const [backupLoading, setBackupLoading] = useState(false);
   const { data: departments = [] } = useDepartments();
+
+  const downloadBackup = async () => {
+    setBackupLoading(true);
+    try {
+      const res = await appwriteApiFetch("/api/admin/backup", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        const b = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(b.error || "Ошибка резервного копирования");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download =
+        res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ??
+        `vkr-backup-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Резервная копия скачана");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setBackupLoading(false);
+    }
+  };
 
   const { data: topicsRes } = useQuery({
     queryKey: ["stats", "topics"],
@@ -61,29 +91,40 @@ export default function StatsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-sm">
+        <h1 className="text-4xl font-bold tracking-tight text-white drop-shadow-sm">
           Статистика
         </h1>
-        <p className="mt-2 text-sm text-white/85">
+        <p className="mt-2 text-base text-white/85">
           Сводные показатели по темам ВКР и операторам.
         </p>
+        <p className="mt-1 text-base text-white/70">
+          ИИ-проверка: модель задаётся в OPENAI_MODEL на сервере.
+        </p>
+        <button
+          type="button"
+          disabled={backupLoading}
+          onClick={downloadBackup}
+          className="mt-4 rounded-full border-2 border-white/70 bg-white/10 px-6 py-2.5 text-base font-semibold text-white transition hover:bg-white/20 disabled:opacity-50"
+        >
+          {backupLoading ? "Формирование…" : "Скачать резервную копию БД"}
+        </button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-white/50 bg-white/90 p-5 shadow-2xl shadow-slate-900/15 backdrop-blur-md">
-          <p className="text-sm text-slate-500">Всего тем</p>
+          <p className="text-base text-slate-500">Всего тем</p>
           <p className="text-2xl font-semibold text-slate-900">
             {topicsRes?.total ?? topics.length}
           </p>
         </div>
         <div className="rounded-2xl border border-white/50 bg-white/90 p-5 shadow-2xl shadow-slate-900/15 backdrop-blur-md">
-          <p className="text-sm text-slate-500">Кафедр в справочнике</p>
+          <p className="text-base text-slate-500">Кафедр в справочнике</p>
           <p className="text-2xl font-semibold text-slate-900">
             {departments.length}
           </p>
         </div>
         <div className="rounded-2xl border border-white/50 bg-white/90 p-5 shadow-2xl shadow-slate-900/15 backdrop-blur-md">
-          <p className="text-sm text-slate-500">Операторов</p>
+          <p className="text-base text-slate-500">Операторов</p>
           <p className="text-2xl font-semibold text-slate-900">
             {operators.length}
           </p>

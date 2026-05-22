@@ -4,6 +4,9 @@ import { ID, Query, Databases } from "node-appwrite";
 import { appwriteConfig, getCollectionId } from "@/constants/appwriteConfig";
 import { createAdminClient, getSessionProfile } from "@/lib/serverAppwrite";
 import { normalizeTopicTitle } from "@/lib/normalizeTopicTitle";
+import { writeTopicAudit } from "@/lib/topicAudit";
+import { computeSimilarityForSave } from "@/lib/runTopicSimilarityForSave";
+import type { TopicSimilarityMatch } from "@/types";
 
 export async function GET(request: NextRequest) {
   try {
@@ -74,10 +77,12 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       title?: string;
       studentName?: string;
+      studentGroup?: string;
       supervisorName?: string;
       year?: string;
       notes?: string;
       departmentId?: string;
+      similarityMatches?: TopicSimilarityMatch[];
     };
 
     const title = body.title?.trim();
@@ -132,6 +137,12 @@ export async function POST(request: Request) {
       );
     }
 
+    const similarity = await computeSimilarityForSave({
+      title,
+      departmentId,
+      clientMatches: body.similarityMatches,
+    });
+
     const now = new Date().toISOString();
     const doc = await databases.createDocument(
       dbId,
@@ -143,13 +154,35 @@ export async function POST(request: Request) {
         departmentId,
         createdByUserId: session.userId,
         studentName: body.studentName?.trim() || undefined,
+        studentGroup: body.studentGroup?.trim() || undefined,
         supervisorName: body.supervisorName?.trim() || undefined,
         year: body.year?.trim() || undefined,
         notes: body.notes?.trim() || undefined,
+        updatedByUserId: session.userId,
+        similarityMaxPercent: similarity.similarityMaxPercent,
+        similarityMatchesJson: similarity.similarityMatchesJson,
         createdAt: now,
         updatedAt: now,
       }
     );
+
+    await writeTopicAudit({
+      topicId: doc.$id,
+      departmentId,
+      action: "create",
+      userId: session.userId,
+      userName: session.profile.fullName,
+      changes: {
+        snapshot: {
+          title: doc.title,
+          studentName: doc.studentName,
+          studentGroup: doc.studentGroup,
+          supervisorName: doc.supervisorName,
+          year: doc.year,
+          notes: doc.notes,
+        },
+      },
+    });
 
     return NextResponse.json(doc);
   } catch (e) {

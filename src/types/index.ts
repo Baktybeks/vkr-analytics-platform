@@ -30,10 +30,37 @@ export type VkrTopicDoc = Models.Document & {
   normalizedTitle: string;
   departmentId: string;
   createdByUserId: string;
+  updatedByUserId?: string;
   studentName?: string;
+  studentGroup?: string;
   supervisorName?: string;
   year?: string;
   notes?: string;
+  similarityMaxPercent?: number;
+  similarityMatchesJson?: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type TopicAuditAction = "create" | "update" | "delete";
+
+export type TopicAuditDoc = Models.Document & {
+  topicId: string;
+  departmentId: string;
+  action: TopicAuditAction;
+  userId: string;
+  userName: string;
+  changes?: string;
+  createdAt: string;
+};
+
+export type TopicSimilarityMatch = {
+  topicId: string;
+  title: string;
+  similarityPercent: number;
+  reason: string;
+  studentName?: string;
+  studentGroup?: string;
+  supervisorName?: string;
+  year?: string;
 };

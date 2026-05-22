@@ -9,6 +9,8 @@ export const appwriteConfig = {
     profiles: process.env.NEXT_PUBLIC_PROFILES_COLLECTION_ID || "profiles",
     vkr_topics:
       process.env.NEXT_PUBLIC_VKR_TOPICS_COLLECTION_ID || "vkr_topics",
+    topic_audit_log:
+      process.env.NEXT_PUBLIC_TOPIC_AUDIT_COLLECTION_ID || "topic_audit_log",
   },
 } as const;
 

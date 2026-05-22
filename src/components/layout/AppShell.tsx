@@ -10,7 +10,7 @@ import { canAccessAdmin, canManageTopics } from "@/lib/permissions";
 const mainLinks = [{ href: "/", label: "Главная" }];
 
 const navPill = (active: boolean) =>
-  `rounded-full px-4 py-2 text-sm font-medium transition ${
+  `rounded-full px-4 py-2 text-base font-medium transition ${
     active
       ? "bg-[#0d6efd] text-white shadow-lg shadow-blue-600/35"
       : "text-white/90 hover:bg-white/10"
@@ -113,7 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </nav>
           <div className="flex items-center gap-3">
-            <span className="max-w-[10rem] truncate text-sm text-white/90">
+            <span className="max-w-[10rem] truncate text-base text-white/90">
               {user.name}
             </span>
             <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/95">

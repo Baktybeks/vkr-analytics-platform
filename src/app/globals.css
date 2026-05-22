@@ -18,6 +18,8 @@
 body {
   min-height: 100vh;
   color: #0f172a;
+  font-size: 1.0625rem;
+  line-height: 1.55;
   font-family: var(--font-sans), system-ui, sans-serif;
   background: linear-gradient(
     165deg,

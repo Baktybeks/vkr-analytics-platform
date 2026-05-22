@@ -9,6 +9,8 @@
     "lint": "eslint",
     "db:test": "node scripts/testConnection.js",
     "db:setup": "node scripts/setupCollections.js setup",
+    "db:migrate": "node scripts/migrateSchema.js",
+    "db:backup": "node scripts/backupAppwrite.js",
     "db:reset": "node scripts/setupCollections.js reset",
     "db:reset-setup": "node scripts/setupCollections.js reset-setup"
   },
@@ -19,6 +21,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.4.2",
     "next": "15.5.18",
+    "openai": "^6.39.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-toastify": "^11.1.0",
