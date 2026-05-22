@@ -295,6 +295,9 @@ export default function TopicsPage() {
     },
     onSuccess: () => {
       toast.success("Тема обновлена");
+      if (editing?.$id) {
+        qc.invalidateQueries({ queryKey: ["topic-history", editing.$id] });
+      }
       closeModal();
       qc.invalidateQueries({ queryKey: ["topics"] });
     },
@@ -407,7 +410,7 @@ export default function TopicsPage() {
         />
       )}
 
-      <section>
+      <section className="relative z-0">
         <h2 className="text-xl font-semibold text-white drop-shadow-sm">
           Список тем
         </h2>
@@ -428,7 +431,7 @@ export default function TopicsPage() {
             фильтры.
           </p>
         )}
-        <ul className="mt-3 divide-y divide-slate-200/80 rounded-2xl border border-white/50 bg-white/90 shadow-xl backdrop-blur-md">
+        <ul className="relative z-0 mt-3 divide-y divide-slate-200/80 rounded-2xl border border-white/50 bg-white/90 shadow-xl">
           {filteredTopics.map((t) => (
             <li key={t.$id} className="px-4 py-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -483,7 +486,9 @@ export default function TopicsPage() {
                       if (similarTopicId === t.$id) setSimilarTopicId(null);
                     }}
                   >
-                    {historyTopicId === t.$id ? "Скрыть историю" : "История"}
+                    {historyTopicId === t.$id
+                      ? "Скрыть историю"
+                      : "История изменений"}
                   </button>
                   <button
                     type="button"
@@ -698,15 +703,6 @@ export default function TopicsPage() {
                 />
               </div>
             </div>
-
-            {isEdit && editing && (
-              <div className="mt-4 border-t border-slate-200/80 pt-4">
-                <h3 className="text-base font-semibold text-slate-800">
-                  История изменений
-                </h3>
-                <TopicHistoryPanel topicId={editing.$id} />
-              </div>
-            )}
 
             <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-slate-200/80 pt-4">
               <button

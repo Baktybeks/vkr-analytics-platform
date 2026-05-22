@@ -61,6 +61,17 @@ export default function StatsPage() {
       fetchJson<{ documents: ProfileDoc[] }>("/api/admin/operators"),
   });
 
+  const { data: aiStatus } = useQuery({
+    queryKey: ["admin", "ai-status"],
+    queryFn: () =>
+      fetchJson<{
+        configured: boolean;
+        model: string;
+        hint: string | null;
+        vercelNote: string | null;
+      }>("/api/admin/ai-status"),
+  });
+
   const topics = useMemo(
     () => topicsRes?.documents ?? [],
     [topicsRes?.documents]
@@ -97,9 +108,24 @@ export default function StatsPage() {
         <p className="mt-2 text-base text-white/85">
           Сводные показатели по темам ВКР и операторам.
         </p>
-        <p className="mt-1 text-base text-white/70">
-          ИИ-проверка: модель задаётся в OPENAI_MODEL на сервере.
-        </p>
+        <div className="mt-3 rounded-xl border border-white/35 bg-white/10 px-4 py-3 text-base text-white/90">
+          <p>
+            <span className="font-semibold">ИИ (OpenAI):</span>{" "}
+            {aiStatus?.configured ? (
+              <span className="text-emerald-200">
+                ключ на сервере найден · модель {aiStatus.model}
+              </span>
+            ) : (
+              <span className="text-amber-200">ключ не найден на сервере</span>
+            )}
+          </p>
+          {!aiStatus?.configured && aiStatus?.hint && (
+            <p className="mt-2 text-sm text-white/80">{aiStatus.hint}</p>
+          )}
+          {!aiStatus?.configured && aiStatus?.vercelNote && (
+            <p className="mt-1 text-sm text-white/70">{aiStatus.vercelNote}</p>
+          )}
+        </div>
         <button
           type="button"
           disabled={backupLoading}

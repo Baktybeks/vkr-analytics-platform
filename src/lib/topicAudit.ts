@@ -53,7 +53,14 @@ const AUDIT_FIELDS = [
   "year",
   "notes",
   "departmentId",
+  "similarityMaxPercent",
 ] as const;
+
+function auditValue(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  const s = String(value).trim();
+  return s === "" ? null : s;
+}
 
 export function buildTopicDiff(
   before: VkrTopicDoc,
@@ -61,13 +68,9 @@ export function buildTopicDiff(
 ): AuditChangeEntry[] {
   const changes: AuditChangeEntry[] = [];
   for (const field of AUDIT_FIELDS) {
-    const prev = before[field as keyof VkrTopicDoc];
     if (after[field as keyof VkrTopicDoc] === undefined) continue;
-    const next = after[field as keyof VkrTopicDoc];
-    const prevStr =
-      prev === undefined || prev === null ? null : String(prev);
-    const nextStr =
-      next === undefined || next === null ? null : String(next);
+    const prevStr = auditValue(before[field as keyof VkrTopicDoc]);
+    const nextStr = auditValue(after[field as keyof VkrTopicDoc]);
     if (prevStr !== nextStr) {
       changes.push({ field, from: prevStr, to: nextStr });
     }

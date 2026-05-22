@@ -1,7 +1,7 @@
 import { Databases, Query } from "node-appwrite";
 import { appwriteConfig, getCollectionId } from "@/constants/appwriteConfig";
 import { createAdminClient } from "@/lib/serverAppwrite";
-import { getOpenAIClient } from "@/lib/openaiClient";
+import { getOpenAIClient, isOpenAIConfigured } from "@/lib/openaiClient";
 import {
   checkTopicSimilarityWithAi,
   prefilterCandidates,
@@ -46,7 +46,7 @@ export async function computeSimilarityForSave(params: {
     return { ...stored, matches: enriched };
   }
 
-  if (!getOpenAIClient()) {
+  if (!isOpenAIConfigured() || !getOpenAIClient()) {
     return { matches: [] };
   }
 

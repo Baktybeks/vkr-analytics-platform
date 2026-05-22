@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import { Databases, Query } from "node-appwrite";
 import { appwriteConfig, getCollectionId } from "@/constants/appwriteConfig";
 import { createAdminClient, getSessionProfile } from "@/lib/serverAppwrite";
-import { getOpenAIClient } from "@/lib/openaiClient";
+import {
+  OPENAI_SETUP_HINT,
+  getOpenAIClient,
+  isOpenAIConfigured,
+} from "@/lib/openaiClient";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 import {
   checkTopicSimilarityWithAi,
   prefilterCandidates,
@@ -16,11 +23,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
-    if (!getOpenAIClient()) {
+    if (!isOpenAIConfigured() || !getOpenAIClient()) {
       return NextResponse.json(
         {
-          error:
-            "Проверка ИИ недоступна: задайте OPENAI_API_KEY в .env на сервере",
+          error: `Проверка ИИ недоступна: ${OPENAI_SETUP_HINT}`,
         },
         { status: 503 }
       );

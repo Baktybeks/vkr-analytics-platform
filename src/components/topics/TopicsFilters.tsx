@@ -130,7 +130,7 @@ function FilterMultiDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 z-50 mt-1.5 w-full min-w-[14rem] rounded-xl border border-slate-200 bg-white py-2 shadow-xl">
+        <div className="absolute left-0 z-[60] mt-1.5 w-full min-w-[14rem] rounded-xl border border-slate-200 bg-white py-2 shadow-2xl ring-1 ring-slate-200/80">
           {options.length === 0 ? (
             <p className="px-3 py-2 text-sm text-slate-500">Нет значений</p>
           ) : (
@@ -219,7 +219,7 @@ export function TopicsFilters({
     filters.supervisors.size > 0;
 
   return (
-    <div className="rounded-2xl border border-white/50 bg-white/90 p-4 shadow-xl backdrop-blur-md sm:p-5">
+    <div className="relative z-30 isolate overflow-visible rounded-2xl border border-white/50 bg-white/90 p-4 shadow-xl backdrop-blur-md sm:p-5">
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-[12rem] flex-1">
@@ -245,7 +245,7 @@ export function TopicsFilters({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-slate-200/80 pt-4">
+        <div className="relative flex flex-wrap items-center gap-3 overflow-visible border-t border-slate-200/80 pt-4">
           <FilterMultiDropdown
             id="group"
             label="Группа"

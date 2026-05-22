@@ -178,7 +178,10 @@ export async function PATCH(request: Request, context: RouteContext) {
       ...similarityFields,
     };
 
-    const diff = buildTopicDiff(topic, patchPayload);
+    const diff = buildTopicDiff(topic, {
+      ...patchPayload,
+      similarityMaxPercent: similarityFields.similarityMaxPercent,
+    });
 
     const updated = await databases.updateDocument(
       dbId,
@@ -187,16 +190,14 @@ export async function PATCH(request: Request, context: RouteContext) {
       patchPayload
     );
 
-    if (diff.length > 0) {
-      await writeTopicAudit({
-        topicId: id,
-        departmentId,
-        action: "update",
-        userId: session.userId,
-        userName: session.profile.fullName,
-        changes: diff,
-      });
-    }
+    await writeTopicAudit({
+      topicId: id,
+      departmentId,
+      action: "update",
+      userId: session.userId,
+      userName: session.profile.fullName,
+      changes: diff,
+    });
 
     return NextResponse.json(updated);
   } catch (e) {
